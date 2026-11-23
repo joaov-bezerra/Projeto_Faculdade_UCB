@@ -1,0 +1,205 @@
+/**
+ * Flamenguista Cybernetic Fire - Urubus em Chamas 3D
+ * 
+ * Arte generativa 3D com urubus estilizados pegando fogo,
+ * partículas de brasas e paleta do Maior time do Mundo (Vermelho, Preto e Branco).
+ */
+
+final int COUNT = 100;
+
+// Matrizes de controle espacial [rotX, rotY, rotZ, radius, size, speed, wingSpan]
+float[][] elements;
+int[] elementColors;
+int[] renderTypes; // 0 = Urubu de Fogo, 1 = Asa Flamejante, 2 = Anel de Brasas
+
+float globalTime = 0;
+
+void setup() {
+  size(1024, 768, P3D);
+  smooth(8);
+  
+  elements = new float[COUNT][7];
+  elementColors = new int[COUNT];
+  renderTypes = new int[COUNT];
+
+  for (int i = 0; i < COUNT; i++) {
+    // Posições e orientações randômicas em 3D
+    elements[i][0] = random(TAU); // Rot X
+    elements[i][1] = random(TAU); // Rot Y
+    elements[i][2] = random(TAU); // Rot Z
+    
+    elements[i][3] = random(60, 450);  // Raio de órbita do centro
+    elements[i][4] = random(15, 40);   // Tamanho base
+    elements[i][5] = random(-0.025, 0.025); // Velocidade de rotação
+    elements[i][6] = random(30, 80);   // Envergadura das asas do Urubu
+
+    // Paleta Mengao (Flamengo: Vermelho, Preto e Branco)
+    float prob = random(100);
+    if (prob < 50) {
+      // Vermelho Chamas / Fogo Rubro
+      elementColors[i] = colorBlended(random(1), 255, 0, 0, 255, 60, 0, 220);
+    } else if (prob < 80) {
+      // Vermelho Escuro / Sangue
+      elementColors[i] = colorBlended(random(1), 180, 0, 0, 100, 0, 0, 240);
+    } else if (prob < 93) {
+      // Branco Puro (Detalhes / Escudo)
+      elementColors[i] = color(255, 255, 255, 230);
+    } else {
+      // Preto Profundo / Carvão
+      elementColors[i] = color(20, 20, 20, 220);
+    }
+
+    renderTypes[i] = floor(random(3));
+  }
+}
+
+void draw() {
+  // Fundo Preto Profundo 
+  background(5, 5, 8); 
+  
+  // Iluminação com forte presença de luz vermelha 
+  directionalLight(255, 40, 0, -1, 1, -1);
+  directionalLight(255, 255, 255, 1, -1, 1);
+  ambientLight(50, 0, 0);
+
+  // Centralização e controle pela câmera/mouse (O mexe mexe)
+  translate(width / 2, height / 2, -100);
+  
+  float targetRotX = map(mouseY, 0, height, -PI/3, PI/3);
+  float targetRotY = map(mouseX, 0, width, -PI/3, PI/3);
+  
+  rotateX(targetRotX + sin(globalTime * 0.4) * 0.15);
+  rotateY(targetRotY + cos(globalTime * 0.4) * 0.15);
+
+  globalTime += 0.02;
+
+  for (int i = 0; i < COUNT; i++) {
+    pushMatrix();
+    
+    // Rotação orbital do elemento
+    rotateX(elements[i][0]);
+    rotateY(elements[i][1]);
+    rotateZ(elements[i][2]);
+
+    // Flutuação dinâmica 
+    float firePulse = sin(globalTime * 3 + i) * 20;
+    translate(0, 0, elements[i][3] + firePulse);
+
+    // Desenha de acordo com o tipo
+    if (renderTypes[i] == 0) {
+      drawFireVulture(elements[i][4], elements[i][6], elementColors[i], i);
+    } else if (renderTypes[i] == 1) {
+      drawFlameFeather(elements[i][4] * 1.8, elementColors[i]);
+    } else {
+      drawEmbersRing(elements[i][4] * 2.0, elementColors[i]);
+    }
+
+    // Atualização dos ângulos de rotação
+    elements[i][0] += elements[i][5];
+    elements[i][1] += elements[i][5] * 0.8;
+    elements[i][2] += elements[i][5] * 0.4;
+
+    popMatrix();
+  }
+}
+
+// ------------------------------------------------------------------
+// Funções de Desenho Específicas do Urubu
+// ------------------------------------------------------------------
+
+// Mudanças de Cores personalizada
+int colorBlended(float fract, float r1, float g1, float b1, float r2, float g2, float b2, float a) {
+  return color(
+    r1 + (r2 - r1) * fract,
+    g1 + (g2 - g1) * fract,
+    b1 + (b2 - b1) * fract, 
+    a
+  );
+}
+
+// Desenha o Urubu
+void drawFireVulture(float bodySize, float wingSpan, int col, int id) {
+  fill(col);
+  stroke(255, 30, 0, 180); // Borda de chamas brilhantes
+  strokeWeight(1);
+
+  // Movimento de batida de asas
+  float wingFlap = sin(globalTime * 5 + id) * (PI / 6);
+
+  // Corpo / Cabeça 
+  pushMatrix();
+  
+  // Peito / Corpo
+  beginShape(TRIANGLES);
+  // Cabeça e bico pontiagudo (Branco/Vermelho)
+  fill(255); // Bico Branco
+  vertex(0, 0, bodySize * 1.2); 
+  vertex(-bodySize * 0.3, -bodySize * 0.3, bodySize * 0.4);
+  vertex(bodySize * 0.3, -bodySize * 0.3, bodySize * 0.4);
+  
+  // Cauda/Corpo 
+  fill(col);
+  vertex(0, 0, -bodySize * 1.5);
+  vertex(-bodySize * 0.5, bodySize * 0.3, 0);
+  vertex(bodySize * 0.5, bodySize * 0.3, 0);
+  endShape();
+
+  // Asa Esquerda (Pegando Fogo)
+  pushMatrix();
+  rotateZ(wingFlap);
+  beginShape(TRIANGLES);
+  vertex(0, 0, 0);
+  vertex(-wingSpan, -wingSpan * 0.4, sin(globalTime * 8) * 10);
+  vertex(-wingSpan * 0.5, bodySize * 0.8, -bodySize * 0.5);
+  endShape();
+  popMatrix();
+
+  // Asa Direita (Pegando Fogo)
+  pushMatrix();
+  rotateZ(-wingFlap);
+  beginShape(TRIANGLES);
+  vertex(0, 0, 0);
+  vertex(wingSpan, -wingSpan * 0.4, sin(globalTime * 8) * 10);
+  vertex(wingSpan * 0.5, bodySize * 0.8, -bodySize * 0.5);
+  endShape();
+  popMatrix();
+
+  popMatrix();
+}
+
+// Desenha uma "Pena de Fogo / Chamas Soltas" em 3D
+void drawFlameFeather(float sz, int col) {
+  stroke(col);
+  strokeWeight(2);
+  noFill();
+
+  beginShape();
+  for (int i = 0; i < 5; i++) {
+    float offset = sin(globalTime * 6 + i) * 8;
+    vertex(offset, -i * (sz / 4), i * 5);
+    vertex(-offset, -i * (sz / 4), -i * 5);
+  }
+  endShape();
+}
+
+// Desenha anéis de brasas incandescente em volta dos urubus
+void drawEmbersRing(float radius, int col) {
+  stroke(col);
+  strokeWeight(3.5);
+  
+  int embers = 10;
+  for (int i = 0; i < embers; i++) {
+    float angle = TWO_PI / embers * i;
+    float px = cos(angle) * radius;
+    float py = sin(angle) * radius;
+    float pz = sin(angle * 2 + globalTime * 4) * 15;
+    
+    // Brasas alternam entre vermelho fogo e pontos brancos incensados
+    if (i % 3 == 0) {
+      stroke(255, 255, 255, 240);
+    } else {
+      stroke(col);
+    }
+    point(px, py, pz);
+  }
+}
